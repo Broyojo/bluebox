@@ -1,11 +1,21 @@
 use std::{fs::read_to_string, io};
 
-fn main() {
+fn main() -> io::Result<()> {
     println!("Hello, world!");
 
-    let source = read_file("program.txt").unwrap();
+    let path = "program.txt";
+
+    let source = match read_file(path) {
+        Ok(s) => s,
+        Err(m) => {
+            eprintln!("Error ({path}): {m}");
+            std::process::exit(1)
+        }
+    };
     let tokens = tokenize(&source);
     println!("{:?}", tokens);
+
+    Ok(())
 }
 
 fn read_file(path: &str) -> io::Result<String> {
