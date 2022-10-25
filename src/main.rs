@@ -1,11 +1,9 @@
-use std::{fs::read_to_string, io};
-
-fn main() -> io::Result<()> {
+fn main() {
     println!("Hello, world!");
 
     let path = "program.txt";
 
-    let source = match read_file(path) {
+    let source = match std::fs::read_to_string(path) {
         Ok(s) => s,
         Err(m) => {
             eprintln!("Error ({path}): {m}");
@@ -14,13 +12,6 @@ fn main() -> io::Result<()> {
     };
     let tokens = tokenize(&source);
     println!("{:?}", tokens);
-
-    Ok(())
-}
-
-fn read_file(path: &str) -> io::Result<String> {
-    let text = read_to_string(path)?;
-    Ok(text)
 }
 
 fn tokenize(source: &str) -> Vec<Instruction> {
