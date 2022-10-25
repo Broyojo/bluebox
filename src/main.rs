@@ -1,7 +1,5 @@
 fn main() {
-    println!("Hello, world!");
-
-    let path = "program.txt";
+    let path = "testing.txt";
 
     let source = match std::fs::read_to_string(path) {
         Ok(s) => s,
@@ -10,8 +8,12 @@ fn main() {
             std::process::exit(1)
         }
     };
+
     let tokens = tokenize(&source);
+
     println!("{:?}", tokens);
+
+    println!("{}", tokens[0].encode());
 }
 
 fn tokenize(source: &str) -> Vec<Instruction> {
@@ -32,7 +34,7 @@ fn tokenize(source: &str) -> Vec<Instruction> {
     tokens
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 enum Register {
     A = 0,
     B = 1,
@@ -66,7 +68,7 @@ type Value = u8;
 fn parse_num(x: &str) -> Result<u8, String> {
     match x.parse() {
         Ok(x) => Ok(x),
-        Err(msg) => Err(format!("Invalid literal {x} ({msg})")),
+        Err(msg) => Err(format!("Invalid number literal {x} ({msg})")),
     }
 }
 
@@ -126,20 +128,68 @@ impl Instruction {
             x => Err(format!("Unknown Opcode '{x}'")),
         }
     }
+
+    fn encode(&self) -> String {
+        use Instruction::*;
+
+        match self {
+            Store(reg, addr) => format!("00001{:03b}\n{:08b}", *reg as u8, *addr),
+            _ => todo!(),
+        }
+
+        // match self {
+        //     Store(reg, addr) => format!("{:b}\n{:08b}", 0b0001, *reg as u8, *addr),
+        //     Load(reg, addr) => format!("{:b}{:08b}\n{:08b}", 0b00010, *reg as u8, *addr),
+        //     Mov(reg1, reg2) => {
+        //         format!("{:08b}{:08b}\n{:08b}", 0b10100, *reg1 as u8, *reg2 as u8)
+        //     }
+        //     Add => format!("{:08b}", 0b00011000),
+        //     Sub => vec![0b00100],
+        //     Rotla => vec![0b00101000],
+        //     Rotra => vec![0b00110001],
+        //     Rotlb => vec![],
+        //     Rotrb => vec![],
+        //     Inc => vec![],
+        //     Dec => vec![],
+        //     Xor => vec![],
+        //     And => vec![],
+        //     Not => vec![],
+        //     Or => vec![],
+        //     Push(reg) => vec![0b01101, *reg as u8],
+        //     Pop(reg) => vec![0b01110, *reg as u8],
+        //     Halt => vec![0b01111],
+        //     In(reg, addr) => vec![0b10000, *reg as u8, *addr],
+        //     Out(reg, addr) => vec![0b10110, *reg as u8, *addr],
+        //     Jumpif(cond, addr) => {
+        //         use Condition::*;
+        //         match cond {
+        //             Positive | Zero | Carry | Negative | Even | Odd | Always => {
+        //                 todo!()
+        //             }
+        //             NotZero | NotCarry | NotOverflow => {
+        //                 let code = *cond as u8 - 8;
+        //                 println!("{code:b}");
+        //                 todo!()
+        //             }
+        //         }
+        //     }
+        //     Assign(_, _) => vec![],
+        // }
+    }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 enum Condition {
-    Positive,
-    Zero,
-    Carry,
-    Negative,
-    Even,
-    Odd,
-    Always,
-    NotZero,
-    NotCarry,
-    NotOverflow,
+    Positive = 0b10110000,
+    Zero = 0b10010101,
+    Carry = 0b10010100,
+    Negative = 0b10010011,
+    Even = 0b10010010,
+    Odd = 0b10010001,
+    Always = 0b10010000,
+    NotZero = 0b11000000,
+    NotCarry = 0b11000001,
+    NotOverflow = 0b11000010,
 }
 
 impl Condition {
