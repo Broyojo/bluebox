@@ -1,7 +1,9 @@
-fn main() {
-    let path = "testing.txt";
+use std::fs;
 
-    let source = match std::fs::read_to_string(path) {
+fn main() {
+    let path = "program.txt";
+
+    let source = match fs::read_to_string(path) {
         Ok(s) => s,
         Err(m) => {
             eprintln!("Error ({path}): {m}");
@@ -11,9 +13,12 @@ fn main() {
 
     let tokens = tokenize(&source);
 
-    println!("{:?}", tokens);
+    let encoded = encode(&tokens);
 
-    println!("{}", tokens[0].encode());
+    tokens
+        .iter()
+        .zip(encoded.iter())
+        .for_each(|(t, e)| println!("{t:?} {e}"));
 }
 
 fn tokenize(source: &str) -> Vec<Instruction> {
@@ -34,6 +39,10 @@ fn tokenize(source: &str) -> Vec<Instruction> {
     tokens
 }
 
+fn encode(tokens: &[Instruction]) -> Vec<String> {
+    tokens.iter().map(|t| t.encode()).collect()
+}
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 enum Register {
     A = 0,
@@ -42,7 +51,7 @@ enum Register {
     D = 3,
     E = 4,
     F = 5,
-    O = 6, // TODO: This is probably not 6, the register ordering is quite weird
+    O = 69, // works for now, but not a final solution. just making an exception for MOV
 }
 
 impl Register {
@@ -72,7 +81,7 @@ fn parse_num(x: &str) -> Result<u8, String> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 enum Instruction {
     Store(Register, Address),
     Load(Register, Address),
@@ -96,6 +105,7 @@ enum Instruction {
     Out(Register, PortAddress),
     Jumpif(Condition, PortAddress),
     Assign(Register, Value),
+    IO, // TODO: Figure out what this is!!!
 }
 
 impl Instruction {
@@ -105,7 +115,7 @@ impl Instruction {
         match s[0] {
             "STORE" => Ok(Store(Register::from(s[1])?, parse_num(s[2])?)),
             "LOAD" => Ok(Load(Register::from(s[1])?, parse_num(s[2])?)),
-            "MOV" => Ok(Mov(Register::from(s[1])?, Register::from(s[2])?)),
+            "MOV" => Ok(Mov(Register::from(s[1])?, Register::from(s[2])?)), // MOV A B : A -> B
             "ADD" => Ok(Add),
             "SUB" => Ok(Sub),
             "ROTLA" => Ok(Rotla),
@@ -125,71 +135,90 @@ impl Instruction {
             "OUT" => Ok(Out(Register::from(s[1])?, parse_num(s[2])?)),
             "JUMPIF" => Ok(Jumpif(Condition::from(s[1])?, parse_num(s[2])?)),
             "ASSIGN" => Ok(Assign(Register::from(s[1])?, parse_num(s[2])?)),
+            "IO" => todo!(),
             x => Err(format!("Unknown Opcode '{x}'")),
         }
     }
 
-    fn encode(&self) -> String {
+    fn encode(self) -> String {
         use Instruction::*;
 
-        match self {
-            Store(reg, addr) => format!("00001{:03b}\n{:08b}", *reg as u8, *addr),
-            _ => todo!(),
+        fn enc_reg_data(op: &str, reg: Register, addr: Address) -> String {
+            format!("{op}{:03b} {addr:08b}", reg as u8)
         }
 
-        // match self {
-        //     Store(reg, addr) => format!("{:b}\n{:08b}", 0b0001, *reg as u8, *addr),
-        //     Load(reg, addr) => format!("{:b}{:08b}\n{:08b}", 0b00010, *reg as u8, *addr),
-        //     Mov(reg1, reg2) => {
-        //         format!("{:08b}{:08b}\n{:08b}", 0b10100, *reg1 as u8, *reg2 as u8)
-        //     }
-        //     Add => format!("{:08b}", 0b00011000),
-        //     Sub => vec![0b00100],
-        //     Rotla => vec![0b00101000],
-        //     Rotra => vec![0b00110001],
-        //     Rotlb => vec![],
-        //     Rotrb => vec![],
-        //     Inc => vec![],
-        //     Dec => vec![],
-        //     Xor => vec![],
-        //     And => vec![],
-        //     Not => vec![],
-        //     Or => vec![],
-        //     Push(reg) => vec![0b01101, *reg as u8],
-        //     Pop(reg) => vec![0b01110, *reg as u8],
-        //     Halt => vec![0b01111],
-        //     In(reg, addr) => vec![0b10000, *reg as u8, *addr],
-        //     Out(reg, addr) => vec![0b10110, *reg as u8, *addr],
-        //     Jumpif(cond, addr) => {
-        //         use Condition::*;
-        //         match cond {
-        //             Positive | Zero | Carry | Negative | Even | Odd | Always => {
-        //                 todo!()
-        //             }
-        //             NotZero | NotCarry | NotOverflow => {
-        //                 let code = *cond as u8 - 8;
-        //                 println!("{code:b}");
-        //                 todo!()
-        //             }
-        //         }
-        //     }
-        //     Assign(_, _) => vec![],
-        // }
+        fn enc_reg_reg(op: &str, reg1: Register, reg2: Register) -> String {
+            format!("{op}{:03b} {:08b}", reg1 as u8, reg2 as u8)
+        }
+
+        fn enc_reg(op: &str, reg: Register) -> String {
+            format!("{op}{:03b}", reg as u8)
+        }
+
+        match self {
+            Store(reg, addr) => enc_reg_data("00001", reg, addr),
+            Load(reg, addr) => enc_reg_data("00010", reg, addr),
+            Mov(reg1, reg2) => {
+                // TODO: investiage this weird corner case
+                if reg1 == Register::O {
+                    format!("10100000 {:08b}", reg2 as u8)
+                } else {
+                    enc_reg_reg("10100", reg1, reg2)
+                }
+            }
+            Add => "00011000".into(),
+            Sub => "00100000".into(),
+            Rotla => "00101000".into(),
+            Rotra => "00110000".into(),
+            Rotlb => "00101001".into(),
+            Rotrb => "00110001".into(),
+            Inc => "00111000".into(),
+            Dec => "01000000".into(),
+            Xor => "01001000".into(),
+            And => "01010000".into(),
+            Not => "01011000".into(),
+            Or => "01100000".into(),
+            Push(reg) => enc_reg("01101", reg),
+            Pop(reg) => enc_reg("01110", reg),
+            Halt => "01111000".into(),
+            In(reg, addr) => enc_reg_data("10000", reg, addr),
+            Out(reg, addr) => enc_reg_data("10110", reg, addr),
+            Jumpif(cond, addr) => {
+                use Condition::*;
+                format!(
+                    "{} {addr:08b}",
+                    match cond {
+                        Positive => "10110000",
+                        Zero => "10010101",
+                        Carry => "10010100",
+                        Negative => "10010011",
+                        Even => "10010010",
+                        Odd => "10010001",
+                        Always => "10010000",
+                        NotZero => "11000000",
+                        NotCarry => "11000001",
+                        NotOverflow => "11000010",
+                    }
+                )
+            }
+            Assign(reg, val) => enc_reg_data("10101", reg, val),
+            IO => todo!(),
+        }
     }
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 enum Condition {
-    Positive = 0b10110000,
-    Zero = 0b10010101,
-    Carry = 0b10010100,
-    Negative = 0b10010011,
-    Even = 0b10010010,
-    Odd = 0b10010001,
-    Always = 0b10010000,
-    NotZero = 0b11000000,
-    NotCarry = 0b11000001,
-    NotOverflow = 0b11000010,
+    Positive,
+    Zero,
+    Carry,
+    Negative,
+    Even,
+    Odd,
+    Always,
+    NotZero,
+    NotCarry,
+    NotOverflow,
 }
 
 impl Condition {
