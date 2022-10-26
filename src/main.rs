@@ -15,21 +15,29 @@ fn main() {
 
     let encoded = encode(&tokens);
 
-    tokens
-        .iter()
-        .zip(encoded.iter())
-        .for_each(|(t, e)| println!("{t:?} {e}"));
+    let s = encoded.iter().fold("".to_string(), |mut acc, e| {
+        acc += &e.replace(' ', "\n");
+        acc += "\n";
+        acc
+    });
+
+    // tokens
+    //     .iter()
+    //     .zip(encoded.iter())
+    //     .for_each(|(t, e)| println!("{t:?} {e}"));
+
+    fs::write("output.txt", s).unwrap();
 }
 
 fn tokenize(source: &str) -> Vec<Instruction> {
     let mut tokens = vec![];
-    for (i, line) in source.lines().enumerate() {
+    for (i, line) in source.lines().filter(|x| !x.is_empty()).enumerate() {
         let parts = line.split_whitespace().collect::<Vec<&str>>();
 
         let instr = match Instruction::from(parts) {
             Ok(i) => i,
             Err(msg) => {
-                eprintln!("Error (line {}): {}", i + 1, msg);
+                eprintln!("Error (line {}): {msg}", i + 1);
                 std::process::exit(1)
             }
         };
@@ -65,7 +73,7 @@ impl Register {
             "E" => Ok(E),
             "F" => Ok(F),
             "O" => Ok(O),
-            _ => Err(format!("Unknown Register '{}'", s)),
+            _ => Err(format!("Unknown Register '{s}'")),
         }
     }
 }
