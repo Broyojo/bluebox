@@ -1,9 +1,9 @@
-use std::fs;
+use std::{env, fs};
 
 fn main() {
-    let path = "program.txt";
+    let path = env::args().nth(1).unwrap_or("".into());
 
-    let source = match fs::read_to_string(path) {
+    let source = match fs::read_to_string(&path) {
         Ok(s) => s,
         Err(m) => {
             eprintln!("Error ({path}): {m}");
