@@ -1,7 +1,7 @@
 use std::{env, fs};
 
 fn main() {
-    let path = env::args().nth(1).unwrap_or("".into());
+    let path = env::args().nth(1).unwrap_or_else(|| "".into());
 
     let source = match fs::read_to_string(&path) {
         Ok(s) => s,
@@ -113,13 +113,13 @@ enum Instruction {
     Out(Register, PortAddress),
     Jumpif(Condition, PortAddress),
     Assign(Register, Value),
-    IO, // TODO: Figure out what this is!!!
+    IO,
 }
 
 impl Instruction {
     fn from(s: Vec<&str>) -> Result<Self, String> {
         use Instruction::*;
-        // TODO: Add restrictions for A and B registers
+
         match s[0] {
             "STORE" => Ok(Store(Register::from(s[1])?, parse_num(s[2])?)),
             "LOAD" => Ok(Load(Register::from(s[1])?, parse_num(s[2])?)),
