@@ -1,25 +1,25 @@
 use std::{env, fs};
 
 fn main() {
-    let path = env::args().nth(1).unwrap_or_else(|| "".into());
+    let path = env::args().nth(1).unwrap_or_else(|| {
+        eprintln!("Error: No input file specified");
+        std::process::exit(1)
+    });
 
-    let source = match fs::read_to_string(&path) {
-        Ok(s) => s,
-        Err(m) => {
-            eprintln!("Error ({path}): {m}");
-            std::process::exit(1)
-        }
-    };
+    let source = fs::read_to_string(&path).unwrap_or_else(|m| {
+        eprintln!("Error ({path}): {m}");
+        std::process::exit(1)
+    });
 
     let tokens = tokenize(&source);
 
     let encoded = encode(&tokens);
 
-    let s = encoded.iter().fold("".to_string(), |mut acc, e| {
-        acc += &e.replace(' ', "\n");
-        acc += "\n";
-        acc
-    });
+    let s = encoded
+        .iter()
+        .map(|e| e.replace(' ', "\n") + "\n")
+        .collect::<Vec<String>>()
+        .concat();
 
     // tokens
     //     .iter()
@@ -34,13 +34,10 @@ fn tokenize(source: &str) -> Vec<Instruction> {
     for (i, line) in source.lines().filter(|x| !x.is_empty()).enumerate() {
         let parts = line.split_whitespace().collect::<Vec<&str>>();
 
-        let instr = match Instruction::from(parts) {
-            Ok(i) => i,
-            Err(msg) => {
-                eprintln!("Error (line {}): {msg}", i + 1);
-                std::process::exit(1)
-            }
-        };
+        let instr = Instruction::from(parts).unwrap_or_else(|msg| {
+            eprintln!("Error (line {}): {msg}", i + 1);
+            std::process::exit(1)
+        });
 
         tokens.push(instr);
     }
@@ -83,10 +80,8 @@ type PortAddress = u8;
 type Value = u8;
 
 fn parse_num(x: &str) -> Result<u8, String> {
-    match x.parse() {
-        Ok(x) => Ok(x),
-        Err(msg) => Err(format!("Invalid number literal {x} ({msg})")),
-    }
+    x.parse()
+        .map_err(|msg| format!("Invalid number literal '{x}' ({msg})"))
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
