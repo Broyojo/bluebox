@@ -162,7 +162,6 @@ impl Instruction {
             Store(reg, addr) => enc_reg_data("00001", reg, addr),
             Load(reg, addr) => enc_reg_data("00010", reg, addr),
             Mov(reg1, reg2) => {
-                // TODO: investiage this weird corner case
                 if reg1 == Register::O {
                     format!("10100000 {:08b}", reg2 as u8)
                 } else {
