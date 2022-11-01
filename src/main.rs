@@ -190,7 +190,7 @@ impl Instruction {
                 format!(
                     "{} {addr:08b}",
                     match cond {
-                        Positive => "10110000",
+                        Positive => "10010000",
                         Zero => "10010101",
                         Carry => "10010100",
                         Negative => "10010011",
