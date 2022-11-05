@@ -26,7 +26,10 @@ fn main() {
     //     .zip(encoded.iter())
     //     .for_each(|(t, e)| println!("{t:?} {e}"));
 
-    fs::write("output.txt", s).unwrap();
+    fs::write("output.txt", s).unwrap_or_else(|msg| {
+        eprintln!("Error: Could not write file: {msg}");
+        std::process::exit(1);
+    });
 }
 
 fn tokenize(source: &str) -> Vec<Instruction> {
@@ -34,7 +37,7 @@ fn tokenize(source: &str) -> Vec<Instruction> {
     for (i, line) in source.lines().filter(|x| !x.is_empty()).enumerate() {
         let parts = line.split_whitespace().collect::<Vec<&str>>();
 
-        let instr = Instruction::from(parts).unwrap_or_else(|msg| {
+        let instr = Instruction::from(&parts).unwrap_or_else(|msg| {
             eprintln!("Error (line {}): {msg}", i + 1);
             std::process::exit(1)
         });
@@ -61,7 +64,7 @@ enum Register {
 
 impl Register {
     fn from(s: &str) -> Result<Self, String> {
-        use Register::*;
+        use Register::{A, B, C, D, E, F, O};
         match s {
             "A" => Ok(A),
             "B" => Ok(B),
@@ -112,10 +115,13 @@ enum Instruction {
 }
 
 impl Instruction {
-    fn from(s: Vec<&str>) -> Result<Self, String> {
-        use Instruction::*;
+    fn from(s: &[&str]) -> Result<Self, String> {
+        use Instruction::{
+            Add, And, Assign, Dec, Halt, In, Inc, Jumpif, Load, Mov, Not, Or, Out, Pop, Push,
+            Rotla, Rotlb, Rotra, Rotrb, Store, Sub, Xor,
+        };
 
-        match s[0] {
+        match *s.first().unwrap_or(&"") {
             "STORE" => Ok(Store(Register::from(s[1])?, parse_num(s[2])?)),
             "LOAD" => Ok(Load(Register::from(s[1])?, parse_num(s[2])?)),
             "MOV" => Ok(Mov(Register::from(s[1])?, Register::from(s[2])?)), // MOV A B : A -> B
@@ -139,12 +145,16 @@ impl Instruction {
             "JUMPIF" => Ok(Jumpif(Condition::from(s[1])?, parse_num(s[2])?)),
             "ASSIGN" => Ok(Assign(Register::from(s[1])?, parse_num(s[2])?)),
             "IO" => todo!(),
+            "" => Err("Empty Instruction".to_string()),
             x => Err(format!("Unknown Opcode '{x}'")),
         }
     }
 
     fn encode(self) -> String {
-        use Instruction::*;
+        use Instruction::{
+            Add, And, Assign, Dec, Halt, In, Inc, Jumpif, Load, Mov, Not, Or, Out, Pop, Push,
+            Rotla, Rotlb, Rotra, Rotrb, Store, Sub, Xor, IO,
+        };
 
         fn enc_reg_data(op: &str, reg: Register, addr: Address) -> String {
             format!("{op}{:03b} {addr:08b}", reg as u8)
@@ -186,11 +196,14 @@ impl Instruction {
             In(reg, addr) => enc_reg_data("10000", reg, addr),
             Out(reg, addr) => enc_reg_data("10110", reg, addr),
             Jumpif(cond, addr) => {
-                use Condition::*;
+                use Condition::{
+                    Always, Carry, Even, Negative, NotCarry, NotOverflow, NotZero, Odd, Positive,
+                    Zero,
+                };
                 format!(
                     "{} {addr:08b}",
                     match cond {
-                        Positive => "10010000",
+                        Positive => "10110000",
                         Zero => "10010101",
                         Carry => "10010100",
                         Negative => "10010011",
@@ -225,7 +238,9 @@ enum Condition {
 
 impl Condition {
     fn from(s: &str) -> Result<Self, String> {
-        use Condition::*;
+        use Condition::{
+            Always, Carry, Even, Negative, NotCarry, NotOverflow, NotZero, Odd, Positive, Zero,
+        };
         match s {
             "POSITIVE" => Ok(Positive),
             "ZERO" => Ok(Zero),
