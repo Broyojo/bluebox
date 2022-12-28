@@ -1,24 +1,24 @@
-use std::{env, fs};
+use std::{env, fs, process::exit};
 
 fn main() {
     let path = env::args().nth(1).unwrap_or_else(|| {
         eprintln!("Error: No input file specified");
-        std::process::exit(1)
+        exit(1)
     });
 
     let source = fs::read_to_string(&path).unwrap_or_else(|m| {
         eprintln!("Error ({path}): {m}");
-        std::process::exit(1)
+        exit(1)
     });
 
     let tokens = tokenize(&source);
 
     let encoded = encode(&tokens);
 
-    let s = encoded
+    let s: String = encoded
         .iter()
         .map(|e| e.replace(' ', "\n") + "\n")
-        .collect::<Vec<String>>()
+        .collect::<Vec<_>>()
         .concat();
 
     // tokens
@@ -28,18 +28,18 @@ fn main() {
 
     fs::write("output.txt", s).unwrap_or_else(|msg| {
         eprintln!("Error: Could not write file: {msg}");
-        std::process::exit(1);
+        exit(1);
     });
 }
 
 fn tokenize(source: &str) -> Vec<Instruction> {
     let mut tokens = vec![];
     for (i, line) in source.lines().filter(|x| !x.is_empty()).enumerate() {
-        let parts = line.split_whitespace().collect::<Vec<&str>>();
+        let parts: Vec<&str> = line.split_whitespace().collect();
 
         let instr = Instruction::from(&parts).unwrap_or_else(|msg| {
             eprintln!("Error (line {}): {msg}", i + 1);
-            std::process::exit(1)
+            exit(1)
         });
 
         tokens.push(instr);
@@ -64,7 +64,7 @@ enum Register {
 
 impl Register {
     fn from(s: &str) -> Result<Self, String> {
-        use Register::{A, B, C, D, E, F, O};
+        use Register::*;
         match s {
             "A" => Ok(A),
             "B" => Ok(B),
@@ -116,10 +116,7 @@ enum Instruction {
 
 impl Instruction {
     fn from(s: &[&str]) -> Result<Self, String> {
-        use Instruction::{
-            Add, And, Assign, Dec, Halt, In, Inc, Jumpif, Load, Mov, Not, Or, Out, Pop, Push,
-            Rotla, Rotlb, Rotra, Rotrb, Store, Sub, Xor,
-        };
+        use Instruction::*;
 
         match *s.first().unwrap_or(&"") {
             "STORE" => Ok(Store(Register::from(s[1])?, parse_num(s[2])?)),
@@ -151,10 +148,7 @@ impl Instruction {
     }
 
     fn encode(self) -> String {
-        use Instruction::{
-            Add, And, Assign, Dec, Halt, In, Inc, Jumpif, Load, Mov, Not, Or, Out, Pop, Push,
-            Rotla, Rotlb, Rotra, Rotrb, Store, Sub, Xor, IO,
-        };
+        use Instruction::*;
 
         fn enc_reg_data(op: &str, reg: Register, addr: Address) -> String {
             format!("{op}{:03b} {addr:08b}", reg as u8)
@@ -196,10 +190,7 @@ impl Instruction {
             In(reg, addr) => enc_reg_data("10000", reg, addr),
             Out(reg, addr) => enc_reg_data("10110", reg, addr),
             Jumpif(cond, addr) => {
-                use Condition::{
-                    Always, Carry, Even, Negative, NotCarry, NotOverflow, NotZero, Odd, Positive,
-                    Zero,
-                };
+                use Condition::*;
                 format!(
                     "{} {addr:08b}",
                     match cond {
@@ -238,9 +229,7 @@ enum Condition {
 
 impl Condition {
     fn from(s: &str) -> Result<Self, String> {
-        use Condition::{
-            Always, Carry, Even, Negative, NotCarry, NotOverflow, NotZero, Odd, Positive, Zero,
-        };
+        use Condition::*;
         match s {
             "POSITIVE" => Ok(Positive),
             "ZERO" => Ok(Zero),
