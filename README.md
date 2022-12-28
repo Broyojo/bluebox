@@ -1,7 +1,7 @@
 # Bluebox Assembler
 
 ## Description
-This is an assembler for the Bluebox computer which I built in The Ultimate Nerd Game (TUNG) It takes in an input `.txt` file and creates an `output.txt` file which has a byte in binary on each line. Your job as the programmer is to then input this into the computer through the memory interface panel. The default program provided, `program.txt`, is a fibonacci program. The circuit board files for the computer are located [here](https://github.com/Broyojo/Capstone-Project).
+This is an assembler for the Bluebox computer which I built in The Ultimate Nerd Game (TUNG). It allows easy writing of programs to be run on the computer. At a high level, the assembler first tokenizes the source into a collection of instruction data types, leveraging Rust’s algebraic data types. Each instruction type is then encoded into the appropriate machine code. It takes in an input `.txt` file and creates an `output.txt` file which has a byte in binary on each line. Your job as the programmer is to then input this into the computer through the memory interface panel. The default program provided, `program.txt`, is a fibonacci program. The circuit board files for the computer are located [here](https://github.com/Broyojo/Capstone-Project).
 
 ## How To Run It
 To run the program, simply run
